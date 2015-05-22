@@ -147,6 +147,7 @@ public class CamActivity extends Activity  {
         inPreview=false;
         releaseMediaRecorder();
         super.onPause();
+
     }
 
     private Camera.Size getBestPreviewSize(int width, int height,
