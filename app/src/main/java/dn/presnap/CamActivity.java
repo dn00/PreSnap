@@ -1,8 +1,10 @@
 package dn.presnap;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.res.Configuration;
 import android.hardware.Camera;
+import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -30,6 +32,7 @@ public class CamActivity extends Activity  {
     private boolean isRecording = false;
     //private String lastVid;
     private static String currentVideo;
+    private Button captureButton;
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -41,44 +44,51 @@ public class CamActivity extends Activity  {
         previewHolder.addCallback(surfaceCallback);
         previewHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 
+        ((AudioManager)getApplicationContext().getSystemService(Context.AUDIO_SERVICE)).setStreamMute(AudioManager.STREAM_SYSTEM, true);
 
-        Button captureButton = (Button) findViewById(R.id.startstop);
+        captureButton = (Button) findViewById(R.id.startstop);
         captureButton.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         if (isRecording) {
-                            // stop recording and release camera
-                            mMediaRecorder.stop();  // stop the recording
-                            releaseMediaRecorder(); // release the MediaRecorder object
-                            camera.lock();         // take camera access back from MediaRecorder
-
-                            // inform the user that recording has stopped
-                            //setCaptureButtonText("Capture");
-                            isRecording = false;
-                            splitIt();
+                            stopRecord();
                         } else {
-                            // initialize video camera
-                            if (prepareVideoRecorder()) {
-                                // Camera is available and unlocked, MediaRecorder is prepared,
-                                // now you can start recording
-                                mMediaRecorder.start();
-
-                                // inform the user that recording has started
-                               // setCaptureButtonText("Stop");
-                                isRecording = true;
-                            } else {
-                                // prepare didn't work, release the camera
-                                releaseMediaRecorder();
-                                // inform user
-                            }
+                            startRecord();
                         }
                     }
+
                 }
         );
-
     }
+    private void stopRecord()
+    {
+        // stop recording and release camera
+        mMediaRecorder.stop();  // stop the recording
+        releaseMediaRecorder(); // release the MediaRecorder object
+        camera.lock();         // take camera access back from MediaRecorder
 
+        // inform the user that recording has stopped
+        //setCaptureButtonText("Capture");
+        isRecording = false;
+        splitIt();
+    }
+    private void startRecord()
+    {
+        if ( prepareVideoRecorder()) {
+            // Camera is available and unlocked, MediaRecorder is prepared,
+            // now you can start recording
+            mMediaRecorder.start();
+
+            // inform the user that recording has started
+            // setCaptureButtonText("Stop");
+            isRecording = true;
+        } else {
+            // prepare didn't work, release the camera
+            releaseMediaRecorder();
+            // inform user
+        }
+    }
     public static Camera getCameraInstance(){
         Camera c = null;
         try {
@@ -90,7 +100,7 @@ public class CamActivity extends Activity  {
         return c; // returns null if camera is unavailable
     }
     private boolean prepareVideoRecorder(){
-        //camera = getCameraInstance();
+       // camera = Camera.open();
         mMediaRecorder = new MediaRecorder();
         // Step 1: Unlock and set camera to MediaRecorder
         camera.unlock();
@@ -102,6 +112,8 @@ public class CamActivity extends Activity  {
         mMediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH));
         // Step 4: Set output file
           mMediaRecorder.setOutputFile(getOutputMediaFile(MEDIA_TYPE_VIDEO).toString());
+       // mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+       // mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.MPEG_4_SP);
         //mMediaRecorder.setOutputFile("/sdcard/video.mp4");
         // Step 5: Set the preview output
         mMediaRecorder.setPreviewDisplay(previewHolder.getSurface());
@@ -128,27 +140,41 @@ public class CamActivity extends Activity  {
             camera.lock();           // lock camera for later use
         }
     }
-
+    private void releaseCamera() {
+        if (camera != null) {
+            camera.release();        // release the camera for other applications
+            camera = null;
+        }
+    }
     @Override
     public void onResume() {
         super.onResume();
 
-        camera=Camera.open();
-        startPreview();
+        camera=getCameraInstance();
+        //captureButton.performClick();
+        camera.startPreview();
+
+       // startPreview();
+       // inPreview = true;
+        //startRecord();
+        //captureButton.performClick();
     }
 
     @Override
     public void onPause() {
+        super.onPause();
+        if (isRecording)
+        {
+            stopRecord();
+        }
         if (inPreview) {
             camera.stopPreview();
         }
 
-        camera.release();
-        camera=null;
         inPreview=false;
-        releaseMediaRecorder();
-
-        super.onPause();
+        //releaseMediaRecorder();
+        releaseCamera();
+      //  captureButton.performClick();
 
     }
     private void splitIt()
@@ -238,9 +264,9 @@ public class CamActivity extends Activity  {
                     p.set("rotation", 90);
                 }
             }
-            camera.startPreview();
-            inPreview=true;
+            inPreview = true;
         }
+
     }
 
     SurfaceHolder.Callback surfaceCallback=new SurfaceHolder.Callback() {
@@ -252,6 +278,7 @@ public class CamActivity extends Activity  {
                                    int height) {
             initPreview(width, height);
             startPreview();
+            captureButton.performClick();
         }
         public void surfaceDestroyed(SurfaceHolder holder) {
             // no-op

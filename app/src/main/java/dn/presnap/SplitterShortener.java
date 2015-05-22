@@ -13,11 +13,15 @@ import com.googlecode.mp4parser.authoring.builder.DefaultMp4Builder;
 import com.googlecode.mp4parser.authoring.container.mp4.MovieCreator;
 import com.googlecode.mp4parser.authoring.tracks.AppendTrack;
 import com.googlecode.mp4parser.authoring.tracks.CroppedTrack;
+import com.coremedia.iso.IsoFile;
+
 
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -29,8 +33,12 @@ public class SplitterShortener {
         movie.setTracks(new LinkedList<Track>());
         // remove all tracks we will create new tracks from the old
 
-        double startTime1 = 1;
-        double endTime1 = 3;
+        double dura = getDurOfVid(file);
+        double saveLength = 5;
+        double startTime1 = dura - saveLength;
+        double endTime1 = dura + 1;
+        //temp
+        int totalTime = (int)saveLength;
 
         boolean timeCorrected = false;
 
@@ -77,11 +85,14 @@ public class SplitterShortener {
             }
             movie.addTrack(new AppendTrack(new CroppedTrack(track, startSample1, endSample1)));
         }
+
+        String timeStamp = new SimpleDateFormat("MMddyy-HHmmss").format(new Date());
+
         long start1 = System.currentTimeMillis();
         Container out = new DefaultMp4Builder().build(movie);
         long start2 = System.currentTimeMillis();
         FileOutputStream fos = new FileOutputStream(String.format(Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_DCIM)+"/PreSnap/output-%f-%f.mp4", startTime1, endTime1));
+                Environment.DIRECTORY_DCIM)+"/PreSnap/PreSnap_"+ timeStamp+ "_" + totalTime +"s.mp4", startTime1, endTime1));
         FileChannel fc = fos.getChannel();
         out.writeContainer(fc);
 
@@ -120,5 +131,13 @@ public class SplitterShortener {
             previous = timeOfSyncSample;
         }
         return timeOfSyncSamples[timeOfSyncSamples.length - 1];
+    }
+
+    private static double getDurOfVid(String file) throws IOException {
+        IsoFile isoFile = new IsoFile(file);
+        double lengthInSeconds = (double)
+                isoFile.getMovieBox().getMovieHeaderBox().getDuration() /
+                isoFile.getMovieBox().getMovieHeaderBox().getTimescale();
+        return lengthInSeconds;
     }
 }
