@@ -29,7 +29,7 @@ public class CamActivity extends Activity  {
     private MediaRecorder mMediaRecorder;
     private boolean isRecording = false;
     //private String lastVid;
-
+    private static String currentVideo;
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,6 +56,7 @@ public class CamActivity extends Activity  {
                             // inform the user that recording has stopped
                             //setCaptureButtonText("Capture");
                             isRecording = false;
+                            splitIt();
                         } else {
                             // initialize video camera
                             if (prepareVideoRecorder()) {
@@ -146,10 +147,18 @@ public class CamActivity extends Activity  {
         camera=null;
         inPreview=false;
         releaseMediaRecorder();
+
         super.onPause();
 
     }
-
+    private void splitIt()
+    {
+        try {
+            SplitterShortener.split(currentVideo);
+        }  catch(IOException ie) {
+            ie.printStackTrace();
+         }
+    }
     private Camera.Size getBestPreviewSize(int width, int height,
                                            Camera.Parameters parameters) {
         Camera.Size result=null;
@@ -261,12 +270,12 @@ public class CamActivity extends Activity  {
     //}
 
     /** Create a File for saving an image or video */
-    private static File getOutputMediaFile(int type){
+    public static File getOutputMediaFile(int type){
         // To be safe, you should check that the SDCard is mounted
         // using Environment.getExternalStorageState() before doing this.
 
         File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_DCIM), "PreSnap");
+                Environment.DIRECTORY_DCIM), "PreSnap/temp");
         // This location works best if you want the created images to be shared
         // between applications and persist after your app has been uninstalled.
 
@@ -290,7 +299,7 @@ public class CamActivity extends Activity  {
         } else {
             return null;
         }
-
+        currentVideo = mediaFile.toString();
         return mediaFile;
     }
 }
